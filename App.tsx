@@ -1,11 +1,72 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CATEGORIES, INITIAL_PRODUCTS } from './constants';
 import { Product, CartItem, TabView } from './types';
 import { ProductCard } from './components/ProductCard';
 import { OrderSummary } from './components/OrderSummary';
 import { AdminProductForm } from './components/AdminProductForm';
 
+// --- Simple Login Component ---
+const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(false);
+  
+  // PASSWORD CONFIGURATION
+  const ACCESS_PASSWORD = "8888"; 
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input === ACCESS_PASSWORD) {
+      onLogin();
+    } else {
+      setError(true);
+      setInput('');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-red-600 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center">
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-extrabold text-gray-900">EasyOrder</h1>
+          <p className="text-gray-500 text-sm mt-1">大旺食品内部报货系统</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <input
+              type="tel" // Shows number pad on mobile
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setError(false);
+              }}
+              placeholder="请输入访问密码"
+              className="w-full text-center text-lg tracking-widest px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+              autoFocus
+            />
+            {error && <p className="text-red-500 text-xs mt-2 font-bold animate-pulse">密码错误，请重试</p>}
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all"
+          >
+            进入系统
+          </button>
+        </form>
+        <p className="mt-6 text-xs text-gray-400">仅限内部客户使用</p>
+      </div>
+    </div>
+  );
+};
+
+// --- Main App Component ---
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<TabView>('catalog');
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [cart, setCart] = useState<Map<string, number>>(new Map());
@@ -15,6 +76,19 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Check for saved session on load
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('easyorder_auth');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem('easyorder_auth', 'true');
+  };
 
   // Derived state
   const cartItems: CartItem[] = useMemo(() => {
@@ -83,7 +157,6 @@ export default function App() {
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [newProduct, ...prev]);
     setShowAddModal(false);
-    // Optionally jump to that category or show all
     if (selectedCategory !== '全部' && newProduct.category !== selectedCategory) {
       setSelectedCategory('全部');
     }
@@ -91,13 +164,17 @@ export default function App() {
 
   const handleDeleteProduct = (id: string) => {
     setProducts(prev => prev.filter(p => p.id !== id));
-    // Also remove from cart if present
     setCart(prev => {
       const newCart = new Map(prev);
       newCart.delete(id);
       return newCart;
     });
   };
+
+  // RENDER LOGIN SCREEN IF NOT AUTHENTICATED
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 max-w-md mx-auto shadow-2xl overflow-hidden relative">
